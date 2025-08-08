@@ -16,5 +16,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Database\Database.csproj" />
+    <ProjectReference Include="..\Bycript\Bycript.csproj" />
+    <ProjectReference Include="..\Bucket\Bucket.csproj" />
   </ItemGroup>
 </Project>
