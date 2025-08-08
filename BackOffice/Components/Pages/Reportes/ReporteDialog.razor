@@ -1,0 +1,174 @@
+@using Database.Models
+@using Database.DTOS
+@using BackOffice.Services
+@using MudBlazor
+@inject IReporteService ReporteService
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Style="max-width: 600px;">
+            <MudForm @ref="form" @bind-IsValid="@isFormValid">
+                <MudGrid>
+                    <MudItem xs="12" sm="6">
+                        <MudSelect @bind-Value="model.AnimalId"
+                                  Label="Animal"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Debe seleccionar un animal">
+                            @foreach (var animal in animales)
+                            {
+                                <MudSelectItem Value="@animal.Id">
+                                    @animal.CodigoRfid - @animal.Raza?.Nombre
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect @bind-Value="model.EmpleadoId"
+                                  Label="Empleado"
+                                  Variant="Variant.Outlined"
+                                  Required="true"
+                                  RequiredError="Debe seleccionar un empleado">
+                            @foreach (var empleado in empleados)
+                            {
+                                <MudSelectItem Value="@empleado.Id">
+                                    @empleado.PrimerNombre @empleado.PrimerApellido
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="model.Descripcion"
+                                     Label="Descripción"
+                                     Variant="Variant.Outlined"
+                                     Required="true"
+                                     RequiredError="La descripción es obligatoria"
+                                     Lines="4"
+                                     Counter="1000"
+                                     MaxLength="1000"
+                                     For="@(() => model.Descripcion)" />
+                    </MudItem>
+                </MudGrid>
+            </MudForm>
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" 
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!isFormValid || isSubmitting)">
+            @if (isSubmitting)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true"/>
+                <MudText Class="ms-2">Procesando...</MudText>
+            }
+            else
+            {
+                @(IsEditMode ? "Actualizar" : "Crear")
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] 
+    IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter] 
+    public bool IsEditMode { get; set; } = false;
+
+    [Parameter] 
+    public Reporte? Reporte { get; set; }
+
+    private MudForm form = default!;
+    private bool isFormValid;
+    private bool isSubmitting;
+    private List<Animale> animales = new();
+    private List<Empleado> empleados = new();
+
+    private ReporteCreateDto model = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDropdownData();
+        
+        if (IsEditMode && Reporte != null)
+        {
+            model = new ReporteCreateDto
+            {
+                Id = Reporte.Id,
+                AnimalId = Reporte.AnimalId,
+                EmpleadoId = Reporte.EmpleadoId,
+                Descripcion = Reporte.Descripcion
+            };
+        }
+    }
+
+    private async Task LoadDropdownData()
+    {
+        try
+        {
+            animales = await ReporteService.GetAnimalesAsync();
+            empleados = await ReporteService.GetEmpleadosAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar datos: {ex.Message}", Severity.Error);
+        }
+    }
+
+    void Cancel()
+    {
+        MudDialog?.Close();
+    }
+
+    private async Task Submit()
+    {
+        if (!isFormValid) return;
+
+        isSubmitting = true;
+        try
+        {
+            if (IsEditMode && Reporte != null)
+            {
+                var result = await ReporteService.UpdateReporteAsync(Reporte.Id, model);
+                if (result != null)
+                {
+                    Snackbar.Clear();
+                    Snackbar.Add("Reporte actualizado exitosamente", Severity.Success);
+                    MudDialog?.Close();
+                }
+                else
+                {
+                    Snackbar.Clear();
+                    Snackbar.Add("Error al actualizar el reporte", Severity.Error);
+                }
+            }
+            else
+            {
+                var result = await ReporteService.CreateReporteAsync(model);
+                if (result != null)
+                {
+                    Snackbar.Add("Reporte creado exitosamente", Severity.Success);
+                    MudDialog?.Close();
+                }
+                else
+                {
+                    Snackbar.Add("Error al crear el reporte", Severity.Error);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al procesar la solicitud: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}
