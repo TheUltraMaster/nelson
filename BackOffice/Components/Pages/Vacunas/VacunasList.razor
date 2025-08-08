@@ -1,27 +1,26 @@
-@page "/animales"
-@page "/animals"
+@page "/vacunas"
+@page "/vacuna"
 @using Database.Models
 @using BackOffice.Services
-@inject IAnimalService AnimalService
+@inject IVacunaService VacunaService
 @inject IDialogService DialogService
 @inject ISnackbar Snackbar
-@inject NavigationManager Navigation
 
-<PageTitle>Gestión de Animales</PageTitle>
+<PageTitle>Gestión de Vacunas</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.False" Class="pa-6">
-    <MudText Typo="Typo.h4" GutterBottom="true">Gestión de Animales</MudText>
+    <MudText Typo="Typo.h4" GutterBottom="true">Gestión de Vacunas</MudText>
     
     <MudCard>
         <MudCardHeader>
             <CardHeaderContent>
                 <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <MudText Typo="Typo.h6">Lista de Animales</MudText>
+                    <MudText Typo="Typo.h6">Lista de Vacunas</MudText>
                     <MudButton Variant="Variant.Filled" 
                               Color="Color.Primary" 
                               StartIcon="Icons.Material.Filled.Add"
                               OnClick="OpenCreateDialog">
-                        Nuevo Animal
+                        Nueva Vacuna
                     </MudButton>
                 </div>
             </CardHeaderContent>
@@ -36,47 +35,36 @@
             }
             else
             {
-                <MudTable Items="animales" 
+                <MudTable Items="vacunas" 
                          Hover="true" 
                          Dense="true"
                          Striped="true"
                          Loading="isLoading">
                     <HeaderContent>
                         <MudTh>ID</MudTh>
-                        <MudTh>Código RFID</MudTh>
-                        <MudTh>Raza</MudTh>
-                        <MudTh>Estado</MudTh>
-                        <MudTh>Peso (lbs)</MudTh>
-                        <MudTh>Fecha Registro</MudTh>
+                        <MudTh>Nombre</MudTh>
+                        <MudTh>Descripción</MudTh>
                         <MudTh Style="text-align: center;">Acciones</MudTh>
                     </HeaderContent>
                     <RowTemplate>
                         <MudTd DataLabel="ID">@context.Id</MudTd>
-                        <MudTd DataLabel="Código RFID">
-                            <MudChip T="string" Size="Size.Small" Color="Color.Info">@context.CodigoRfid</MudChip>
+                        <MudTd DataLabel="Nombre">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">@context.Nombre</MudChip>
                         </MudTd>
-                        <MudTd DataLabel="Raza">@context.Raza?.Nombre</MudTd>
-                        <MudTd DataLabel="Estado">
-                            <MudChip T="string" Size="Size.Small" Color="GetEstadoColor(context.EstadoAnimal?.Nombre)">
-                                @context.EstadoAnimal?.Nombre
-                            </MudChip>
+                        <MudTd DataLabel="Descripción">
+                            <MudText Typo="Typo.body2">
+                                @if (!string.IsNullOrEmpty(context.Descripcion))
+                                {
+                                    @(context.Descripcion.Length > 100 ? $"{context.Descripcion.Substring(0, 100)}..." : context.Descripcion)
+                                }
+                                else
+                                {
+                                    <span style="color: gray; font-style: italic;">Sin descripción</span>
+                                }
+                            </MudText>
                         </MudTd>
-                        <MudTd DataLabel="Peso">@context.PesoActualLibras.ToString("F2")</MudTd>
-                        <MudTd DataLabel="Fecha">@context.FechaRegistro.ToString("dd/MM/yyyy HH:mm")</MudTd>
                         <MudTd Style="text-align: center;">
                             <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
-                                <MudTooltip Text="Ver detalles">
-                                    <MudIconButton Icon="Icons.Material.Filled.Visibility" 
-                                                 Color="Color.Info"
-                                                 Size="Size.Small"
-                                                 OnClick="() => ViewAnimal(context.Id)" />
-                                </MudTooltip>
-                                <MudTooltip Text="Ver bitácora">
-                                    <MudIconButton Icon="Icons.Material.Filled.Assignment" 
-                                                 Color="Color.Secondary"
-                                                 Size="Size.Small"
-                                                 OnClick="() => ViewBitacora(context.Id)" />
-                                </MudTooltip>
                                 <MudTooltip Text="Editar">
                                     <MudIconButton Icon="Icons.Material.Filled.Edit" 
                                                  Color="Color.Warning"
@@ -87,7 +75,7 @@
                                     <MudIconButton Icon="Icons.Material.Filled.Delete" 
                                                  Color="Color.Error"
                                                  Size="Size.Small"
-                                                 OnClick="() => DeleteAnimal(context)" />
+                                                 OnClick="() => DeleteVacuna(context)" />
                                 </MudTooltip>
                             </MudButtonGroup>
                         </MudTd>
@@ -115,7 +103,7 @@
 </MudContainer>
 
 @code {
-    private List<Animale> animales = new();
+    private List<Vacuna> vacunas = new();
     private bool isLoading = true;
     private int currentPage = 1;
     private int pageSize = 10;
@@ -124,22 +112,22 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadAnimales();
+        await LoadVacunas();
     }
 
-    private async Task LoadAnimales()
+    private async Task LoadVacunas()
     {
         isLoading = true;
         try
         {
-            var result = await AnimalService.GetAnimalesPaginadosAsync(currentPage, pageSize);
-            animales = result.animales;
+            var result = await VacunaService.GetVacunasPaginadosAsync(currentPage, pageSize);
+            vacunas = result.vacunas;
             totalItems = result.totalCount;
             totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error al cargar animales: {ex.Message}", Severity.Error);
+            Snackbar.Add($"Error al cargar vacunas: {ex.Message}", Severity.Error);
         }
         finally
         {
@@ -150,13 +138,13 @@
     private async Task OnPageChanged(int page)
     {
         currentPage = page;
-        await LoadAnimales();
+        await LoadVacunas();
     }
 
     private async Task OpenCreateDialog()
     {
-        var dialog = await DialogService.ShowAsync<AnimalDialog>("Crear Animal", 
-            new DialogParameters<AnimalDialog> 
+        var dialog = await DialogService.ShowAsync<VacunaDialog>("Crear Vacuna", 
+            new DialogParameters<VacunaDialog> 
             { 
                 { x => x.IsEditMode, false } 
             });
@@ -164,48 +152,32 @@
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {
-            await LoadAnimales();
-            Snackbar.Add("Animal creado exitosamente", Severity.Success);
+            await LoadVacunas();
+            Snackbar.Add("Vacuna creada exitosamente", Severity.Success);
         }
     }
 
-    private async Task OpenEditDialog(Animale animal)
+    private async Task OpenEditDialog(Vacuna vacuna)
     {
-        var dialog = await DialogService.ShowAsync<AnimalDialog>("Editar Animal", 
-            new DialogParameters<AnimalDialog> 
+        var dialog = await DialogService.ShowAsync<VacunaDialog>("Editar Vacuna", 
+            new DialogParameters<VacunaDialog> 
             { 
                 { x => x.IsEditMode, true },
-                { x => x.Animal, animal }
+                { x => x.Vacuna, vacuna }
             });
 
         var result = await dialog.Result;
         if (result != null && !result.Canceled)
         {
-            await LoadAnimales();
+            await LoadVacunas();
         }
     }
 
-    private async Task ViewAnimal(int animalId)
-    {
-        var dialog = await DialogService.ShowAsync<AnimalDetailsDialog>("Detalles del Animal",
-            new DialogParameters<AnimalDetailsDialog>
-            {
-                { x => x.AnimalId, animalId }
-            });
-
-        await dialog.Result;
-    }
-
-    private void ViewBitacora(int animalId)
-    {
-        Navigation.NavigateTo($"/animals/{animalId}/bitacora");
-    }
-
-    private async Task DeleteAnimal(Animale animal)
+    private async Task DeleteVacuna(Vacuna vacuna)
     {
         var confirmed = await DialogService.ShowMessageBox(
             "Confirmar eliminación",
-            $"¿Está seguro de que desea eliminar el animal con código RFID '{animal.CodigoRfid}'?",
+            $"¿Está seguro de que desea eliminar la vacuna '{vacuna.Nombre}'?",
             yesText: "Eliminar", 
             cancelText: "Cancelar");
 
@@ -213,32 +185,25 @@
         {
             try
             {
-                var success = await AnimalService.DeleteAnimalAsync(animal.Id);
+                var success = await VacunaService.DeleteVacunaAsync(vacuna.Id);
                 if (success)
                 {
-                    await LoadAnimales();
-                    Snackbar.Add("Animal eliminado exitosamente", Severity.Success);
+                    await LoadVacunas();
+                    Snackbar.Add("Vacuna eliminada exitosamente", Severity.Success);
                 }
                 else
                 {
-                    Snackbar.Add("Error al eliminar el animal", Severity.Error);
+                    Snackbar.Add("Error al eliminar la vacuna", Severity.Error);
                 }
+            }
+            catch (InvalidOperationException ex)
+            {
+                Snackbar.Add(ex.Message, Severity.Warning);
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Error al eliminar animal: {ex.Message}", Severity.Error);
+                Snackbar.Add($"Error al eliminar vacuna: {ex.Message}", Severity.Error);
             }
         }
-    }
-
-    private Color GetEstadoColor(string? estado)
-    {
-        return estado?.ToLower() switch
-        {
-            "activo" => Color.Success,
-            "enfermo" => Color.Warning,
-            "muerto" => Color.Error,
-            _ => Color.Default
-        };
     }
 }

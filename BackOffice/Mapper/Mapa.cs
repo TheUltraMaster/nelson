@@ -25,5 +25,8 @@ namespace BackOffice.Mapper
         public partial UnidadesDeMedidaAlimento UnidadesDeMedidaAlimentoCreateDtoToUnidadesDeMedidaAlimento(UnidadesDeMedidaAlimentoCreateDto dto);
         public partial Usuario UsuarioCreateDtoToUsuario(UsuarioCreateDto dto);
         public partial Vacuna VacunaCreateDtoToVacuna(VacunaCreateDto dto);
+
+
+
     }
 }

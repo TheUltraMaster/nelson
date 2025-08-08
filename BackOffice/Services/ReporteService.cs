@@ -2,6 +2,7 @@ using Database.Data;
 using Database.Models;
 using Database.DTOS;
 using Microsoft.EntityFrameworkCore;
+using Bucket;
 
 namespace BackOffice.Services
 {
@@ -14,15 +15,20 @@ namespace BackOffice.Services
         Task<bool> DeleteReporteAsync(int id);
         Task<List<Animale>> GetAnimalesAsync();
         Task<List<Empleado>> GetEmpleadosAsync();
+        Task<string> UploadImageAsync(Stream imageStream, string fileName, string contentType);
+        Task<Reporte> CreateReporteWithImageAsync(ReporteCreateDto reporteDto, string imageUrl);
+        Task<Reporte?> UpdateReporteWithImageAsync(int id, ReporteCreateDto reporteDto, string? imageUrl);
     }
 
     public class ReporteService : IReporteService
     {
         private readonly DatabseContext _context;
+        private readonly IMinioService _minioService;
 
-        public ReporteService(DatabseContext context)
+        public ReporteService(DatabseContext context, IMinioService minioService)
         {
             _context = context;
+            _minioService = minioService;
         }
 
         public async Task<(List<Reporte> reportes, int totalCount)> GetReportesPaginadosAsync(int page, int pageSize)
@@ -63,6 +69,7 @@ namespace BackOffice.Services
 
             _context.Reportes.Add(reporte);
             await _context.SaveChangesAsync();
+
             return await GetReporteByIdAsync(reporte.Id) ?? reporte;
         }
 
@@ -103,6 +110,60 @@ namespace BackOffice.Services
                 .OrderBy(e => e.PrimerNombre)
                 .ThenBy(e => e.PrimerApellido)
                 .ToListAsync();
+        }
+
+        public async Task<string> UploadImageAsync(Stream imageStream, string fileName, string contentType)
+        {
+            return await _minioService.UploadImageAsync(imageStream, fileName, contentType);
+        }
+
+        public async Task<Reporte> CreateReporteWithImageAsync(ReporteCreateDto reporteDto, string imageUrl)
+        {
+            var reporte = new Reporte
+            {
+                AnimalId = reporteDto.AnimalId,
+                EmpleadoId = reporteDto.EmpleadoId,
+                Descripcion = reporteDto.Descripcion,
+                FechaRegistro = DateTime.Now
+            };
+
+            _context.Reportes.Add(reporte);
+            await _context.SaveChangesAsync();
+
+            var archivo = new Archivo
+            {
+                ReporteId = reporte.Id,
+                Enlance = imageUrl
+            };
+            
+            _context.Add(archivo);
+            await _context.SaveChangesAsync();
+
+            return await GetReporteByIdAsync(reporte.Id) ?? reporte;
+        }
+
+        public async Task<Reporte?> UpdateReporteWithImageAsync(int id, ReporteCreateDto reporteDto, string? imageUrl)
+        {
+            var existingReporte = await _context.Reportes.FindAsync(id);
+            if (existingReporte == null) return null;
+
+            existingReporte.AnimalId = reporteDto.AnimalId;
+            existingReporte.EmpleadoId = reporteDto.EmpleadoId;
+            existingReporte.Descripcion = reporteDto.Descripcion;
+
+            if (!string.IsNullOrEmpty(imageUrl))
+            {
+                var archivo = new Archivo
+                {
+                    ReporteId = id,
+                    Enlance = imageUrl
+                };
+                
+                _context.Add(archivo);
+            }
+
+            await _context.SaveChangesAsync();
+            return await GetReporteByIdAsync(id);
         }
     }
 }

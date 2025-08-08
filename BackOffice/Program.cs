@@ -19,11 +19,23 @@ builder.Services.AddRazorComponents()
 builder.Services.AddDbContext<DatabseContext>(opt => opt.UseMySQL("Server=localhost;Database=Nelson;Uid=root;Pwd=Judith0709;Convert Zero Datetime=True;"));
 
 // Add custom services
+builder.Services.AddScoped<IAlimentoService, AlimentoService>();
 builder.Services.AddScoped<IAnimalService, AnimalService>();
+builder.Services.AddScoped<IBitacoraService, BitacoraService>();
+builder.Services.AddScoped<IBitacoraPesoService, BitacoraPesoService>();
+builder.Services.AddScoped<IBitacoraVacunaService, BitacoraVacunaService>();
+builder.Services.AddScoped<ICompraAlimentoService, CompraAlimentoService>();
 builder.Services.AddScoped<IEstadoAnimalService, EstadoAnimalService>();
 builder.Services.AddScoped<IEmpleadoService, EmpleadoService>();
+builder.Services.AddScoped<IHistorialAlimenticioService, HistorialAlimenticioService>();
 builder.Services.AddScoped<IReporteService, ReporteService>();
+builder.Services.AddScoped<IRazaService, RazaService>();
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ITiposAlimentoService, TiposAlimentoService>();
+builder.Services.AddScoped<IUnidadesDeMedidaAlimentoService, UnidadesDeMedidaAlimentoService>();
+builder.Services.AddScoped<IVacunaService, VacunaService>();
 builder.Services.AddScoped<BackOffice.Mapper.Mapa>();
+builder.Services.AddScoped<IBCryptService, BCryptService>();
 
 // Minio configuration
 builder.Services.AddScoped<IMinioClient>(provider =>

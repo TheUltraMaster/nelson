@@ -2,6 +2,7 @@
 @using Database.DTOS
 @using BackOffice.Services
 @using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms
 @inject IReporteService ReporteService
 @inject ISnackbar Snackbar
 
@@ -51,6 +52,59 @@
                                      MaxLength="1000"
                                      For="@(() => model.Descripcion)" />
                     </MudItem>
+                    
+                    <MudItem xs="12">
+                        <MudFileUpload T="IBrowserFile" Accept=".jpg,.jpeg,.png"
+                                      OnFilesChanged="OnImageSelected"
+                                      MaximumFileCount="1"
+                                      Disabled="isUploadingImage">
+                            <ActivatorContent>
+                                <MudButton Variant="Variant.Outlined"
+                                          Color="Color.Primary"
+                                          StartIcon="@Icons.Material.Filled.CloudUpload"
+                                          Disabled="isUploadingImage">
+                                    @if (isUploadingImage)
+                                    {
+                                        <MudProgressCircular Class="me-2" Size="Size.Small" Indeterminate="true"/>
+                                        <span>Subiendo...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Seleccionar Imagen</span>
+                                    }
+                                </MudButton>
+                            </ActivatorContent>
+                        </MudFileUpload>
+                        @if (selectedImageFile != null && string.IsNullOrEmpty(uploadedImageUrl))
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Image" Size="Size.Small" Class="me-2" />
+                                @selectedImageFile.Name (@FormatFileSize(selectedImageFile.Size))
+                                <MudButton Size="Size.Small" 
+                                          Color="Color.Primary" 
+                                          Variant="Variant.Text"
+                                          OnClick="UploadImageAsync"
+                                          Disabled="isUploadingImage"
+                                          Class="ml-2">
+                                    Subir Imagen
+                                </MudButton>
+                            </MudText>
+                        }
+                        @if (!string.IsNullOrEmpty(uploadedImageUrl))
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2" Color="Color.Success">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="me-2" />
+                                Imagen subida exitosamente
+                                <MudButton Size="Size.Small" 
+                                          Color="Color.Error" 
+                                          Variant="Variant.Text"
+                                          OnClick="RemoveUploadedImage"
+                                          Class="ml-2">
+                                    Quitar
+                                </MudButton>
+                            </MudText>
+                        }
+                    </MudItem>
                 </MudGrid>
             </MudForm>
         </MudContainer>
@@ -89,6 +143,9 @@
     private bool isSubmitting;
     private List<Animale> animales = new();
     private List<Empleado> empleados = new();
+    private IBrowserFile? selectedImageFile;
+    private string? uploadedImageUrl;
+    private bool isUploadingImage;
 
     private ReporteCreateDto model = new();
 
@@ -135,7 +192,7 @@
         {
             if (IsEditMode && Reporte != null)
             {
-                var result = await ReporteService.UpdateReporteAsync(Reporte.Id, model);
+                var result = await ReporteService.UpdateReporteWithImageAsync(Reporte.Id, model, uploadedImageUrl);
                 if (result != null)
                 {
                     Snackbar.Clear();
@@ -150,15 +207,31 @@
             }
             else
             {
-                var result = await ReporteService.CreateReporteAsync(model);
-                if (result != null)
+                if (!string.IsNullOrEmpty(uploadedImageUrl))
                 {
-                    Snackbar.Add("Reporte creado exitosamente", Severity.Success);
-                    MudDialog?.Close();
+                    var result = await ReporteService.CreateReporteWithImageAsync(model, uploadedImageUrl);
+                    if (result != null)
+                    {
+                        Snackbar.Add("Reporte creado exitosamente", Severity.Success);
+                        MudDialog?.Close();
+                    }
+                    else
+                    {
+                        Snackbar.Add("Error al crear el reporte", Severity.Error);
+                    }
                 }
                 else
                 {
-                    Snackbar.Add("Error al crear el reporte", Severity.Error);
+                    var result = await ReporteService.CreateReporteAsync(model);
+                    if (result != null)
+                    {
+                        Snackbar.Add("Reporte creado exitosamente", Severity.Success);
+                        MudDialog?.Close();
+                    }
+                    else
+                    {
+                        Snackbar.Add("Error al crear el reporte", Severity.Error);
+                    }
                 }
             }
         }
@@ -170,5 +243,56 @@
         {
             isSubmitting = false;
         }
+    }
+
+    private void OnImageSelected(InputFileChangeEventArgs e)
+    {
+        selectedImageFile = e.File;
+        uploadedImageUrl = null;
+        StateHasChanged();
+    }
+
+    private async Task UploadImageAsync()
+    {
+        if (selectedImageFile == null) return;
+
+        isUploadingImage = true;
+        try
+        {
+            var fileName = $"reporte_{Guid.NewGuid()}.jpg";
+            using var stream = selectedImageFile.OpenReadStream();
+            uploadedImageUrl = await ReporteService.UploadImageAsync(stream, fileName, selectedImageFile.ContentType);
+            Snackbar.Add("Imagen subida exitosamente", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al subir la imagen: {ex.Message}", Severity.Error);
+            uploadedImageUrl = null;
+        }
+        finally
+        {
+            isUploadingImage = false;
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveUploadedImage()
+    {
+        uploadedImageUrl = null;
+        selectedImageFile = null;
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] suffixes = { "B", "KB", "MB", "GB" };
+        int counter = 0;
+        decimal number = bytes;
+        while (Math.Round(number / 1024) >= 1)
+        {
+            number /= 1024;
+            counter++;
+        }
+        return $"{number:n1}{suffixes[counter]}";
     }
 }

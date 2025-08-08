@@ -1,8 +1,11 @@
 @using Database.Models
 @using BackOffice.Services
 @using MudBlazor
+@using Bucket
 @inject IReporteService ReporteService
 @inject ISnackbar Snackbar
+@inject IMinioService MinioService
+@inject IDialogService DialogService
 
 <MudDialog>
     <DialogContent>
@@ -85,8 +88,8 @@
                                 <MudItem xs="12">
                                     <MudPaper Class="pa-4" Elevation="1">
                                         <MudText Typo="Typo.subtitle2" GutterBottom="true">
-                                            <MudIcon Icon="Icons.Material.Filled.AttachFile" Class="me-2" />
-                                            Archivos Adjuntos (@reporte.Archivos.Count)
+                                            <MudIcon Icon="Icons.Material.Filled.Image" Class="me-2" />
+                                            Imágenes Adjuntas (@reporte.Archivos.Count)
                                         </MudText>
                                         <MudDivider Class="mb-3" />
                                         <MudList Dense="true" T="string">
@@ -94,17 +97,26 @@
                                             {
                                                 <MudListItem T="string">
                                                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                                                        <div>
-                                                            <MudText Typo="Typo.body2">Archivo #@archivo.Id</MudText>
+                                                        <div style="flex-grow: 1;">
+                                                            <MudText Typo="Typo.body2">Imagen #@archivo.Id</MudText>
                                                             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                                Enlace: @archivo.Enlance
+                                                                @GetFileName(archivo.Enlance)
                                                             </MudText>
                                                         </div>
-                                                        <MudIconButton Icon="Icons.Material.Filled.OpenInNew"
-                                                                      Size="Size.Small"
-                                                                      Color="Color.Primary"
-                                                                      Href="@archivo.Enlance"
-                                                                      Target="_blank" />
+                                                        <div style="display: flex; gap: 8px;">
+                                                            <MudButton Size="Size.Small" 
+                                                                     Variant="Variant.Outlined"
+                                                                     Color="Color.Primary"
+                                                                     StartIcon="Icons.Material.Filled.Visibility"
+                                                                     OnClick="() => ViewImage(archivo.Enlance)">
+                                                                Ver
+                                                            </MudButton>
+                                                            <MudIconButton Icon="Icons.Material.Filled.OpenInNew"
+                                                                          Size="Size.Small"
+                                                                          Color="Color.Primary"
+                                                                          Href="@GetFullImageUrl(archivo.Enlance)"
+                                                                          Target="_blank" />
+                                                        </div>
                                                     </div>
                                                 </MudListItem>
                                             }
@@ -167,5 +179,38 @@
     void Close()
     {
         MudDialog?.Close();
+    }
+
+    private string GetFullImageUrl(string enlace)
+    {
+        return MinioService.GetBucketAddress() + enlace;
+    }
+
+    private string GetFileName(string enlace)
+    {
+        if (string.IsNullOrEmpty(enlace)) return "";
+        var parts = enlace.Split('/');
+        return parts.Length > 0 ? parts[^1] : enlace;
+    }
+
+    private async Task ViewImage(string enlace)
+    {
+        try
+        {
+            var fileName = GetFileName(enlace);
+            var imageUrl = await MinioService.GetImageUrlAsync(fileName);
+            
+            var parameters = new DialogParameters
+            {
+                ["ImageUrl"] = imageUrl,
+                ["ImageName"] = fileName
+            };
+
+            await DialogService.ShowAsync<ImageViewDialog>("Ver Imagen", parameters);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error al cargar la imagen: {ex.Message}", Severity.Error);
+        }
     }
 }
